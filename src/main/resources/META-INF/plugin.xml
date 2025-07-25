@@ -61,10 +61,9 @@
         <!-- SmartChr will be registered programmatically -->
     </actions>
 
-    <!-- Application components -->
-    <application-components>
-        <component>
-            <implementation-class>com.github.msfukui.smartchr.SmartChrApplicationComponent</implementation-class>
-        </component>
-    </application-components>
+    <!-- Application listeners -->
+    <applicationListeners>
+        <listener class="com.github.msfukui.smartchr.SmartChrStartupListener"
+                  topic="com.intellij.ide.AppLifecycleListener"/>
+    </applicationListeners>
 </idea-plugin>

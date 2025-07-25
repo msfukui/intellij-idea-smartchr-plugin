@@ -51,6 +51,10 @@ tasks {
         // デバッグ用の設定
         jvmArgs = listOf("-Xmx2048m", "-XX:+UnlockDiagnosticVMOptions")
     }
+    
+    buildSearchableOptions {
+        enabled = false
+    }
 }
 
 dependencies {
