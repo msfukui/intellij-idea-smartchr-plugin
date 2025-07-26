@@ -27,6 +27,12 @@
     ]]></description>
 
     <change-notes><![CDATA[
+    <h3>1.0.1</h3>
+    <ul>
+        <li>🔧 <strong>Compatibility Update</strong>: Extended support to IntelliJ IDEA 2025.3 (build 253.*)</li>
+        <li>✅ Verified compatibility with IntelliJ IDEA 2025.1 (build 251.*)</li>
+    </ul>
+    
     <h3>1.0.0</h3>
     <ul>
         <li><strong>Initial stable release</strong></li>
@@ -42,10 +48,10 @@
     ]]></change-notes>
 
     <!-- Plugin version -->
-    <version>1.0.0</version>
+    <version>1.0.1</version>
 
     <!-- Compatible with IntelliJ IDEA 2023.1 and later -->
-    <idea-version since-build="231" until-build="252.*"/>
+    <idea-version since-build="231" until-build="253.*"/>
 
     <!-- Plugin dependencies -->
     <depends>com.intellij.modules.platform</depends>
