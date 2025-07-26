@@ -1,19 +1,20 @@
 package com.github.msfukui.smartchr.settings
 
-import com.intellij.ide.actions.RevealFileAction
-import com.intellij.openapi.fileEditor.FileEditorManager
-import com.intellij.openapi.project.ProjectManager
+import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.project.ex.ProjectManagerEx
 import com.intellij.openapi.vfs.LocalFileSystem
+import com.intellij.platform.PlatformProjectOpenProcessor
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.ui.FormBuilder
 import java.awt.Desktop
 import java.io.File
+import java.nio.file.Paths
 import javax.swing.JButton
 import javax.swing.JPanel
 
 /**
  * SmartChrの設定UIコンポーネント
- * JSON設定ファイルへのリンクと設定ファイル作成機能を提供
+ * JSON設定ファイルをIntelliJエディタで開く機能を提供（プロジェクト未開時でも対応）
  */
 class SmartChrSettingsComponent(private val settings: SmartChrSettings? = null) {
     
@@ -31,13 +32,6 @@ class SmartChrSettingsComponent(private val settings: SmartChrSettings? = null) 
             }
         }
         
-        // 設定ファイルを作成するボタン
-        val createConfigButton = JButton("設定ファイルを作成").apply {
-            addActionListener {
-                createConfigFile(configPath)
-            }
-        }
-        
         panel = FormBuilder.createFormBuilder()
             .addComponent(JBLabel("SmartChr設定"))
             .addSeparator()
@@ -46,7 +40,6 @@ class SmartChrSettingsComponent(private val settings: SmartChrSettings? = null) 
             .addLabeledComponent("設定ファイルの場所:", JBLabel(configPath))
             .addVerticalGap(10)
             .addComponent(openConfigButton)
-            .addComponent(createConfigButton)
             .addComponentFillVertically(JPanel(), 0)
             .panel
     }
@@ -74,38 +67,71 @@ class SmartChrSettingsComponent(private val settings: SmartChrSettings? = null) 
     }
     
     /**
-     * 設定ファイルをエディタで開く
+     * 設定ファイルをIntelliJエディタで開く（プロジェクト未開時でも対応）
      */
     private fun openConfigFile(configPath: String) {
         val file = File(configPath)
         
-        // ファイルが存在しない場合は作成
+        // ファイルが存在しない場合は空のデフォルト設定ファイルを作成
         if (!file.exists()) {
-            createConfigFile(configPath)
+            try {
+                jsonConfigService.createDefaultConfigFile(configPath)
+            } catch (e: Exception) {
+                e.printStackTrace()
+                return
+            }
         }
         
-        try {
-            // IntelliJエディタで開く
-            val virtualFile = LocalFileSystem.getInstance().refreshAndFindFileByPath(configPath)
-            if (virtualFile != null) {
-                val project = ProjectManager.getInstance().openProjects.firstOrNull()
-                if (project != null && !project.isDisposed) {
-                    FileEditorManager.getInstance(project).openFile(virtualFile, true)
-                } else {
-                    // プロジェクトが開いていない場合は外部エディタで開く
-                    openWithSystemEditor(file)
-                }
-            } else {
+        // IntelliJエディタで開くことを試行
+        ApplicationManager.getApplication().invokeLater {
+            try {
+                openWithIntelliJEditor(file)
+            } catch (e: Exception) {
+                e.printStackTrace()
+                // IntelliJエディタで開けない場合はシステムエディタにフォールバック
                 openWithSystemEditor(file)
             }
-        } catch (e: Exception) {
-            // 失敗した場合は外部エディタで開く
-            openWithSystemEditor(file)
         }
     }
     
     /**
-     * システムの既定のエディタで開く
+     * IntelliJエディタでファイルを開く（PlatformProjectOpenProcessorを使用）
+     */
+    private fun openWithIntelliJEditor(file: File) {
+        // ファイルをVirtualFileに変換
+        LocalFileSystem.getInstance().refresh(false)
+        val virtualFile = LocalFileSystem.getInstance().refreshAndFindFileByPath(file.absolutePath)
+            ?: throw Exception("Could not find virtual file for: ${file.absolutePath}")
+        
+        // PlatformProjectOpenProcessorでファイルを開く
+        val projectOpenProcessor = PlatformProjectOpenProcessor.getInstance()
+        val projectManagerEx = ProjectManagerEx.getInstanceEx()
+        
+        // ファイルが単体で開けるかチェック
+        if (projectOpenProcessor.canOpenProject(virtualFile)) {
+            projectOpenProcessor.doOpenProject(virtualFile, null, false)
+        } else {
+            // 単体で開けない場合は、ファイルのディレクトリを一時プロジェクトとして開く
+            val projectPath = Paths.get(file.parent)
+            val parentVirtualFile = LocalFileSystem.getInstance().findFileByPath(file.parent)
+            if (parentVirtualFile != null) {
+                projectOpenProcessor.doOpenProject(parentVirtualFile, null, false)
+                // プロジェクトが開かれた後にファイルをエディタで開く
+                ApplicationManager.getApplication().invokeLater {
+                    val project = projectManagerEx.openProjects.firstOrNull()
+                    if (project != null) {
+                        val fileEditorManager = com.intellij.openapi.fileEditor.FileEditorManager.getInstance(project)
+                        fileEditorManager.openFile(virtualFile, true)
+                    }
+                }
+            } else {
+                throw Exception("Could not find parent directory: ${file.parent}")
+            }
+        }
+    }
+    
+    /**
+     * システムの既定エディタでファイルを開く（フォールバック用）
      */
     private fun openWithSystemEditor(file: File) {
         try {
@@ -113,19 +139,6 @@ class SmartChrSettingsComponent(private val settings: SmartChrSettings? = null) 
                 Desktop.getDesktop().open(file)
             }
         } catch (e: Exception) {
-            // ログに記録するが、ユーザーには見せない
-            e.printStackTrace()
-        }
-    }
-    
-    /**
-     * 設定ファイルを作成する
-     */
-    private fun createConfigFile(configPath: String) {
-        try {
-            jsonConfigService.createDefaultConfigFile(configPath)
-        } catch (e: Exception) {
-            // エラーが発生した場合もログに記録するのみ
             e.printStackTrace()
         }
     }

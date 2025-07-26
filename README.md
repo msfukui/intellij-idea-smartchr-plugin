@@ -42,8 +42,7 @@ vim-smartchrプラグインの機能をIntelliJ IDEAに移植したプラグイ�
 設定画面で以下の操作が可能です：
 
 - **設定ファイルの場所確認**: JSON設定ファイルのフルパス表示
-- **「設定ファイルを開く」**: クリックでJSON設定ファイルをエディタで開く
-- **「設定ファイルを作成」**: デフォルトのJSON設定ファイルを作成
+- **「設定ファイルを開く」**: クリックでJSON設定ファイルをIntelliJエディタで開く（プロジェクト未開時でも対応、ファイルが存在しない場合は自動作成）
 
 初期状態：
 ```json
@@ -133,13 +132,13 @@ JSON設定を保存後、以下で機能をテスト：
 
 ### テスト状況
 
-全39テストが100%成功：
+全37テストが100%成功：
 - JsonConfigServiceTest: 8テスト
 - SmartChrSettingsTest: 8テスト  
-- SmartChrSettingsComponentTest: 6テスト
+- SmartChrSettingsComponentTest: 5テスト
 - SmartChrTypedHandlerTest: 5テスト
 - SmartChrIntegrationTest: 6テスト
-- SmartChrModelsTest: 6テスト
+- SmartChrModelsTest: 5テスト
 
 ### アーキテクチャ
 

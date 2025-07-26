@@ -69,7 +69,7 @@ class SmartChrSettingsComponentTest {
     }
     
     @Test
-    fun testShouldHaveCreateConfigFileButton() {
+    fun testShouldNotHaveCreateConfigFileButton() {
         // Given
         val panel = component.panel
         
@@ -77,33 +77,8 @@ class SmartChrSettingsComponentTest {
         val buttons = findButtonsInPanel(panel)
         
         // Then
-        assertTrue("設定ファイルを作成するボタンが存在すること", 
-                   buttons.any { it.text.contains("設定ファイルを作成") })
-    }
-    
-    @Test
-    fun testCreateConfigFileButtonShouldCreateFile() {
-        // Given
-        val jsonConfigPath = settings.getJsonConfigFilePath()
-        val jsonFile = File(jsonConfigPath)
-        
-        // 設定ファイルが存在しないことを確認
-        if (jsonFile.exists()) {
-            jsonFile.delete()
-        }
-        assertFalse("テスト開始時に設定ファイルが存在しないこと", jsonFile.exists())
-        
-        val panel = component.panel
-        val buttons = findButtonsInPanel(panel)
-        val createButton = buttons.find { it.text.contains("設定ファイルを作成") }
-        
-        // When
-        assertNotNull("作成ボタンが見つかること", createButton)
-        createButton!!.doClick()
-        
-        // Then
-        assertTrue("設定ファイルが作成されること", jsonFile.exists())
-        assertTrue("設定ファイルが空でないこと", jsonFile.length() > 0)
+        assertFalse("設定ファイルを作成するボタンが存在しないこと", 
+                    buttons.any { it.text.contains("設定ファイルを作成") })
     }
     
     @Test
