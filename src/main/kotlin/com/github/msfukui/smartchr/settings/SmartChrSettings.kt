@@ -8,6 +8,7 @@ import com.intellij.openapi.components.State
 import com.intellij.openapi.components.Storage
 import com.intellij.util.xmlb.XmlSerializerUtil
 import com.intellij.util.xmlb.annotations.XCollection
+import java.io.File
 
 /**
  * SmartChrプラグインの設定を管理するサービス
@@ -19,6 +20,8 @@ import com.intellij.util.xmlb.annotations.XCollection
 class SmartChrSettings : PersistentStateComponent<SmartChrSettings.State> {
     
     private var myState = State()
+    private val jsonConfigService = JsonConfigService()
+    private var isJsonMigrated = false
     
     /**
      * 設定の永続化用データクラス
@@ -49,6 +52,30 @@ class SmartChrSettings : PersistentStateComponent<SmartChrSettings.State> {
      * マッピングのリストを取得
      */
     fun getMappings(): List<SmartChrMapping> {
+        // XML設定からJSON設定への移行を実行
+        ensureJsonMigration()
+        
+        // JSON設定ファイルから読み込み
+        val jsonConfigPath = jsonConfigService.getDefaultConfigFilePath()
+        val jsonFile = File(jsonConfigPath)
+        
+        return if (jsonFile.exists()) {
+            try {
+                jsonConfigService.loadMappingsFromFile(jsonConfigPath)
+            } catch (e: Exception) {
+                // JSON読み込みに失敗した場合はXML設定を使用
+                getXmlMappings()
+            }
+        } else {
+            // JSON設定ファイルが存在しない場合はXML設定を使用
+            getXmlMappings()
+        }
+    }
+    
+    /**
+     * XML設定からマッピングを取得（後方互換性のため）
+     */
+    private fun getXmlMappings(): List<SmartChrMapping> {
         return myState.mappings.map { state ->
             SmartChrMapping(
                 key = state.key.firstOrNull() ?: ' ',
@@ -68,38 +95,42 @@ class SmartChrSettings : PersistentStateComponent<SmartChrSettings.State> {
      * マッピングを設定
      */
     fun setMappings(mappings: List<SmartChrMapping>) {
-        myState.mappings.clear()
-        myState.mappings.addAll(mappings.map { mapping ->
-            MappingState(
-                key = mapping.key.toString(),
-                candidates = mapping.candidates.toMutableList(),
-                mode = mapping.mode.name,
-                fileTypes = mapping.fileTypes.toMutableList(),
-                enabled = mapping.enabled
-            )
-        })
+        // JSON設定ファイルに保存
+        val jsonConfigPath = jsonConfigService.getDefaultConfigFilePath()
+        try {
+            jsonConfigService.saveMappingsToFile(mappings, jsonConfigPath)
+        } catch (e: Exception) {
+            // JSON保存に失敗した場合は元の方法で保存
+            myState.mappings.clear()
+            myState.mappings.addAll(mappings.map { mapping ->
+                MappingState(
+                    key = mapping.key.toString(),
+                    candidates = mapping.candidates.toMutableList(),
+                    mode = mapping.mode.name,
+                    fileTypes = mapping.fileTypes.toMutableList(),
+                    enabled = mapping.enabled
+                )
+            })
+        }
     }
     
     /**
      * マッピングを追加
      */
     fun addMapping(mapping: SmartChrMapping) {
-        val mappingState = MappingState(
-            key = mapping.key.toString(),
-            candidates = mapping.candidates.toMutableList(),
-            mode = mapping.mode.name,
-            fileTypes = mapping.fileTypes.toMutableList(),
-            enabled = mapping.enabled
-        )
-        myState.mappings.add(mappingState)
+        val currentMappings = getMappings().toMutableList()
+        currentMappings.add(mapping)
+        setMappings(currentMappings)
     }
     
     /**
      * マッピングを削除
      */
     fun removeMapping(index: Int) {
-        if (index in myState.mappings.indices) {
-            myState.mappings.removeAt(index)
+        val currentMappings = getMappings().toMutableList()
+        if (index in currentMappings.indices) {
+            currentMappings.removeAt(index)
+            setMappings(currentMappings)
         }
     }
     
@@ -107,7 +138,31 @@ class SmartChrSettings : PersistentStateComponent<SmartChrSettings.State> {
      * 設定をリセット
      */
     fun reset() {
-        myState.mappings.clear()
+        val jsonConfigPath = jsonConfigService.getDefaultConfigFilePath()
+        try {
+            jsonConfigService.createDefaultConfigFile(jsonConfigPath)
+        } catch (e: Exception) {
+            // JSON操作に失敗した場合は元の方法でリセット
+            myState.mappings.clear()
+        }
+    }
+    
+    /**
+     * XMLからJSONへの移行を確実に実行
+     */
+    private fun ensureJsonMigration() {
+        if (!isJsonMigrated) {
+            val xmlMappings = getXmlMappings()
+            jsonConfigService.migrateFromXmlSettings(xmlMappings)
+            isJsonMigrated = true
+        }
+    }
+    
+    /**
+     * JSON設定ファイルのパスを取得
+     */
+    fun getJsonConfigFilePath(): String {
+        return jsonConfigService.getDefaultConfigFilePath()
     }
     
     companion object {

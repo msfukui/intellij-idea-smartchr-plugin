@@ -11,6 +11,8 @@ class SmartChrSettingsTest : TestCase() {
     override fun setUp() {
         super.setUp()
         settings = SmartChrSettings()
+        // 各テスト前に設定をクリア
+        settings.reset()
     }
     
     fun testShouldStartWithEmptyMappings() {
@@ -140,23 +142,30 @@ class SmartChrSettingsTest : TestCase() {
     }
     
     fun testShouldHandleInvalidCycleModeGracefully() {
-        // Given
-        val state = SmartChrSettings.State()
-        val mappingState = SmartChrSettings.MappingState(
-            key = "=",
-            candidates = mutableListOf("="),
-            mode = "INVALID_MODE", // Invalid mode
-            fileTypes = mutableListOf("*"),
-            enabled = true
-        )
-        state.mappings.add(mappingState)
+        // Given - JSON設定ファイルで無効なモードをテスト
+        val jsonContent = """
+        {
+            "mappings": [
+                {
+                    "key": "=",
+                    "candidates": ["="],
+                    "mode": "INVALID_MODE",
+                    "fileTypes": ["*"],
+                    "enabled": true
+                }
+            ]
+        }
+        """.trimIndent()
+        
+        val jsonConfigPath = settings.getJsonConfigFilePath()
+        val jsonFile = java.io.File(jsonConfigPath)
+        jsonFile.parentFile?.mkdirs()
+        jsonFile.writeText(jsonContent)
         
         // When
-        val settings = SmartChrSettings()
-        settings.loadState(state)
+        val mappings = settings.getMappings()
         
         // Then
-        val mappings = settings.getMappings()
         assertEquals(1, mappings.size)
         assertEquals(CycleMode.LOOP, mappings[0].mode) // Defaults to LOOP
     }
