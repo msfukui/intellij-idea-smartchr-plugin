@@ -59,9 +59,9 @@ tasks {
 
 dependencies {
     testImplementation("org.jetbrains.kotlin:kotlin-test")
-    testImplementation("org.junit.jupiter:junit-jupiter:5.9.2")
+    testImplementation("junit:junit:4.13.2")
 }
 
 tasks.test {
-    useJUnitPlatform()
+    // JUnit 4を使用
 }
